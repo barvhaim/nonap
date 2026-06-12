@@ -24,9 +24,27 @@ enum ProcessWatch {
         "node", "python", "ruby", "java", "cargo", "make", "ssh", "rsync", "docker",
     ]
 
-    /// All executable-name substrings we treat as candidates. Agents first so a
-    /// match's position in this array doubles as its menu priority.
+    /// All executable names we treat as candidates. Agents first so a match's
+    /// position in this array doubles as its menu priority.
     private static let needles = agentNeedles + toolNeedles
+
+    /// Whether `name` is the tool named by `needle`: an exact match, or the
+    /// needle as a prefix immediately followed by a digit (so `python3`,
+    /// `node18`, `llama2` count) — but NOT a loose substring. Substring matching
+    /// was the source of false positives: `rsync` inside `colorsyncd`, `cursor`
+    /// inside `CursorUIViewService`, `ssh` inside `ssh-agent`. A *letter* after
+    /// the needle means it's a different word, so we reject it.
+    private static func isTool(_ name: String, _ needle: String) -> Bool {
+        let lower = name.lowercased()
+        if lower == needle { return true }
+        guard lower.hasPrefix(needle) else { return false }
+        return lower[lower.index(lower.startIndex, offsetBy: needle.count)].isNumber
+    }
+
+    /// Whether a process basename names any of our tools.
+    private static func matches(_ name: String) -> Bool {
+        needles.contains { isTool(name, $0) }
+    }
 
     /// Whether the process with `pid` is still alive. `kill(_, 0)` sends no
     /// signal; it returns 0 if the pid exists, or -1 with `ESRCH` if it's gone.
@@ -52,13 +70,7 @@ enum ProcessWatch {
             let comm = String(trimmed[trimmed.index(after: sp)...])
                 .trimmingCharacters(in: .whitespaces)
             let name = (comm as NSString).lastPathComponent
-            let lower = name.lowercased()
-            // Skip the renderer/GPU "Helper" subprocesses GUI apps spawn (e.g.
-            // ChatGPTHelper, Cursor Helper) — watch the main app process, not
-            // its workers.
-            guard pid != getpid(),
-                  !lower.contains("helper"),
-                  needles.contains(where: lower.contains) else { continue }
+            guard pid != getpid(), matches(name) else { continue }
             all.append(Candidate(pid: pid, name: name))
         }
 
@@ -79,8 +91,7 @@ enum ProcessWatch {
     /// The index of the first `needles` entry this name matches; lower sorts
     /// first. Unmatched names (shouldn't occur post-filter) sort last.
     private static func rank(_ name: String) -> Int {
-        let lower = name.lowercased()
-        return needles.firstIndex(where: lower.contains) ?? needles.count
+        needles.firstIndex { isTool(name, $0) } ?? needles.count
     }
 
     /// Run a command and return its stdout, or nil if it couldn't launch.
