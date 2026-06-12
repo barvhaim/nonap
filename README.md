@@ -2,123 +2,60 @@
 
 [![Build](https://github.com/barvhaim/nonap/actions/workflows/build.yml/badge.svg)](https://github.com/barvhaim/nonap/actions/workflows/build.yml)
 
-A native macOS menu bar app that keeps your Mac awake **only when you need it**.
-
-Use it for long builds, downloads, backups, SSH sessions, local AI jobs, and
-anything else that should not be interrupted by sleep. It's the GUI equivalent
-of the `caffeinate` command.
+A tiny macOS menu bar app that keeps your Mac awake — **only when you need it**.
+The GUI equivalent of `caffeinate`, for long builds, downloads, backups, SSH
+sessions, and local AI jobs.
 
 <p align="center">
   <img src="docs/screenshot.png" alt="NoNap menu" width="225">
 </p>
 
-## Download
+- ☕ Lives in the menu bar — green dot when awake, faint ring when off
+- ⏱ One click to keep awake, or a timed session (30 min / 1 h / 2 h) with a live countdown
+- 🎛 Three modes: prevent **system** sleep (default), **display** sleep, or **both**
+- 🪶 Uses native IOKit power assertions — no daemons, no polling. Remembers your mode.
 
-Grab the latest `NoNap.zip` from the
-[**Releases**](https://github.com/barvhaim/nonap/releases) page, unzip it, and
-move `NoNap.app` to your Applications folder.
+## Install
 
-On first launch, **right-click `NoNap.app` → Open → Open** (the build is
-ad-hoc signed, not notarized, so a plain double-click is blocked once). After
-that it launches normally. Requires Apple Silicon (arm64).
+Download `NoNap.zip` from the
+[**Releases**](https://github.com/barvhaim/nonap/releases) page, unzip, and drag
+`NoNap.app` to Applications. Apple Silicon (arm64) only.
 
-Prefer to build it yourself? See [Build & run](#build--run).
+> First launch: **right-click `NoNap.app` → Open → Open**. The build is ad-hoc
+> signed (not notarized), so a plain double-click is blocked once — after that
+> it opens normally.
 
-## Menu
+## Modes
 
-NoNap lives in the menu bar as a coffee-cup icon with a status dot — **green
-when keeping your Mac awake**, a faint ring when off. Click it for:
+| Mode | Keeps awake | Like |
+|------|-------------|------|
+| **Prevent system sleep** *(default)* | System; display may sleep | `caffeinate` |
+| **Prevent display sleep** | System **and** screen | `caffeinate -d` |
+| **Prevent both** | System **and** screen | — |
 
-```
-Start NoNap
-Stop NoNap
-Start for 30 minutes
-Start for 1 hour
-Start for 2 hours
-──────────────
-Mode ▸
-  ✓ Prevent system sleep      (default — like `caffeinate`)
-    Prevent display sleep
-    Prevent both
-──────────────
-Quit
-```
+## Build from source
 
-- **Prevent system sleep** — the Mac stays awake; the display may still sleep.
-- **Prevent display sleep** — the screen stays on too.
-- **Prevent both** — neither the system nor the display sleeps.
-
-The selected mode is remembered across launches. Timed sessions show a live
-countdown in the menu bar and stop automatically when they expire.
-
-## How it works
-
-NoNap holds IOKit power assertions
-(`kIOPMAssertionTypePreventUserIdleSystemSleep` /
-`…PreventUserIdleDisplaySleep`) — the same mechanism `caffeinate` uses. No
-background daemons, no polling. Assertions are released the moment you Stop or
-Quit.
-
-## Build & run
-
-Requires Xcode / Swift 6 toolchain on macOS.
-
-```bash
-# Fast dev loop — runs as a menu-bar accessory, no Dock icon:
-swift run
-
-# Build a distributable NoNap.app and launch it:
-./Scripts/make_app.sh
-open ./NoNap.app
-```
-
-## Sharing NoNap with others
-
-```bash
-./Scripts/package_zip.sh      # builds NoNap.app and zips it to NoNap.zip
-```
-
-Send `NoNap.zip` to anyone. Because the app is **ad-hoc signed** (not notarized
-by Apple), macOS Gatekeeper will block a plain double-click on another Mac. The
-recipient opens it the first time by either:
-
-- **Right-click `NoNap.app` → Open → Open** (only needed once), or
-- Running `xattr -dr com.apple.quarantine /path/to/NoNap.app` in Terminal.
-
-After that it launches normally. This is the free, no-Apple-account path and is
-fine for yourself and a handful of friends.
-
-> **Want clean, warning-free distribution to anyone?** That requires an Apple
-> Developer account ($99/yr) to sign with a *Developer ID* certificate and
-> notarize the app. The signing/notarization step can be added to the build
-> script when you're ready — NoNap needs no special entitlements, so it's
-> straightforward.
-
-This build is **Apple Silicon (arm64) only**. For Intel Macs, build a universal
-binary with `swift build -c release --arch arm64 --arch x86_64`.
-
-## Verify it's working
-
-While NoNap is active:
-
-```bash
-pmset -g assertions
-```
-
-You should see `PreventUserIdleSystemSleep` (and/or `PreventUserIdleDisplaySleep`)
-attributed to NoNap. They disappear when you Stop or Quit.
-
-## Contributing
-
-Issues and pull requests are welcome. To hack on NoNap:
+Requires Xcode 16+ / Swift 6.
 
 ```bash
 git clone https://github.com/barvhaim/nonap.git
 cd nonap
-swift run          # runs the menu-bar app directly, no Dock icon
+
+swift run                 # run directly (menu-bar accessory, no Dock icon)
+./Scripts/make_app.sh     # build a NoNap.app bundle
+./Scripts/package_zip.sh  # build + zip to NoNap.zip for sharing
 ```
 
-The whole app is four small Swift files under `Sources/NoNap/`.
+To confirm it's holding a power assertion while active:
+
+```bash
+pmset -g assertions | grep NoNap
+```
+
+## Contributing
+
+Issues and PRs welcome — the whole app is four small Swift files under
+`Sources/NoNap/`. See [RELEASING.md](RELEASING.md) for how releases are cut.
 
 ## License
 
