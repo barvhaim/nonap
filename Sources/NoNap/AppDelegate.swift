@@ -1,7 +1,7 @@
 import AppKit
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private let controller = NoNapController()
     private var statusItem: NSStatusItem!
@@ -12,6 +12,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var modeItems: [KeepAwakeMode: NSMenuItem] = [:]
     private var loginItem: NSMenuItem!
 
+    /// The "Keep awake until ▸" submenu, repopulated on open with the current
+    /// list of running candidate processes.
+    private var watchMenu: NSMenu!
+
+    /// A process the user can choose to watch (carried via `representedObject`).
+    private struct WatchTarget { let pid: pid_t; let name: String }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.menu = buildMenu()
@@ -19,9 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.onStateChange = { [weak self] in
             self?.refreshUI()
         }
-        controller.onTimedExpiry = {
-            Notifier.post(title: "NoNap stopped",
-                          body: "Your timer ended — your Mac can sleep now.")
+        controller.onAutoStop = { finished in
+            let body = finished.map { "\($0) finished — your Mac can sleep now." }
+                ?? "Your timer ended — your Mac can sleep now."
+            Notifier.post(title: "NoNap stopped", body: body)
         }
         refreshUI()
     }
@@ -64,6 +72,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                            keyEquivalent: "")
         customItem.target = self
         timedItem.submenu = timedMenu
+
+        // "Keep awake until ▸" submenu: running candidate processes plus a
+        // typed Watch PID… option. Rebuilt on open (see menuNeedsUpdate).
+        let watchItem = menu.addItem(withTitle: "Keep awake until", action: nil, keyEquivalent: "")
+        let watchMenu = NSMenu()
+        watchMenu.autoenablesItems = false
+        watchMenu.delegate = self
+        watchItem.submenu = watchMenu
+        self.watchMenu = watchMenu
 
         menu.addItem(.separator())
 
@@ -137,6 +154,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.startTimed(seconds)
     }
 
+    // MARK: - Keep-awake-until-a-process-exits
+
+    /// Repopulate the "Keep awake until ▸" submenu with the processes running
+    /// right now, each time it's opened (a build-time snapshot would be stale).
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu === watchMenu else { return }
+        menu.removeAllItems()
+
+        for candidate in ProcessWatch.candidates() {
+            let item = menu.addItem(withTitle: "\(candidate.name) (\(candidate.pid))",
+                                    action: #selector(startWatchFromItem(_:)),
+                                    keyEquivalent: "")
+            item.target = self
+            item.representedObject = WatchTarget(pid: candidate.pid, name: candidate.name)
+            item.isEnabled = !controller.isActive
+        }
+        if menu.numberOfItems == 0 {
+            let none = menu.addItem(withTitle: "No candidate processes",
+                                    action: nil, keyEquivalent: "")
+            none.isEnabled = false
+        }
+
+        menu.addItem(.separator())
+        let custom = menu.addItem(withTitle: "Watch PID…",
+                                  action: #selector(watchCustomPID), keyEquivalent: "")
+        custom.target = self
+        custom.isEnabled = !controller.isActive
+    }
+
+    @objc private func startWatchFromItem(_ sender: NSMenuItem) {
+        guard let target = sender.representedObject as? WatchTarget else { return }
+        Notifier.requestAuthorizationIfNeeded()
+        if !controller.startWatching(pid: target.pid, label: target.name) {
+            NSSound.beep()   // it exited between listing and selection
+        }
+    }
+
+    /// Prompt for a PID to watch. Reuses the startCustom() NSAlert pattern.
+    @objc private func watchCustomPID() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        let alert = NSAlert()
+        alert.messageText = "Keep awake until a process exits"
+        alert.informativeText = "Enter the PID of the process to watch."
+        alert.addButton(withTitle: "Watch")
+        alert.addButton(withTitle: "Cancel")
+
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        field.placeholderString = "12345"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let text = field.stringValue.trimmingCharacters(in: .whitespaces)
+        guard let pid = pid_t(text), pid > 0, ProcessWatch.isAlive(pid) else {
+            NSSound.beep()
+            return
+        }
+        Notifier.requestAuthorizationIfNeeded()
+        controller.startWatching(pid: pid, label: "PID \(pid)")
+    }
+
     @objc private func setMode(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String,
               let mode = KeepAwakeMode(rawValue: raw) else { return }
@@ -187,9 +266,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let button = statusItem.button {
             button.image = statusIcon(active: controller.isActive)
             button.imagePosition = .imageLeading
-            // Show the remaining time next to the icon only during a timed session.
+            // Next to the icon: a countdown during a timed session, or the
+            // watched process's name while waiting on it; nothing otherwise.
             if controller.isActive, let remaining = controller.remainingTime() {
                 button.title = " " + formatted(remaining)
+            } else if controller.isActive, let name = controller.watchedName {
+                button.title = " " + name
             } else {
                 button.title = ""
             }

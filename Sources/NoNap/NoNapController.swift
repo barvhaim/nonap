@@ -11,9 +11,11 @@ final class NoNapController {
     /// so the UI can refresh in one place.
     var onStateChange: (() -> Void)?
 
-    /// Called only when a *timed* session ends on its own (not a manual Stop),
-    /// so the UI can notify the user.
-    var onTimedExpiry: (() -> Void)?
+    /// Called when a session ends on its own — a timer elapsed or a watched
+    /// process exited — never on a manual Stop, so the UI can notify the user.
+    /// The argument names what finished (a watched process), or nil for a
+    /// plain timer.
+    var onAutoStop: ((_ finished: String?) -> Void)?
 
     private static let modeDefaultsKey = "keepAwakeMode"
 
@@ -25,8 +27,15 @@ final class NoNapController {
     private var stopTimer: DispatchSourceTimer?
     private var tickTimer: DispatchSourceTimer?
 
+    /// Repeating timer that polls a watched pid; nil unless watching a process.
+    private var watchTimer: DispatchSourceTimer?
+
     /// When a timed session ends; nil for an indefinite session.
     private(set) var endDate: Date?
+
+    /// Short name of the process being watched, shown in the menu-bar title;
+    /// nil unless a process-watch session is active.
+    private(set) var watchedName: String?
 
     var isActive: Bool { !assertionIDs.isEmpty }
 
@@ -66,8 +75,29 @@ final class NoNapController {
         onStateChange?()
     }
 
-    /// Why a session ended — affects whether the user is notified.
-    private enum StopReason { case manual, expired }
+    /// Begin keeping the Mac awake until the process `pid` exits, then auto-stop.
+    /// `label` is the process's short name, shown in the menu bar and the
+    /// end-of-session notification. Returns false (and does nothing) if the pid
+    /// is already gone, so the caller can surface that.
+    @discardableResult
+    func startWatching(pid: pid_t, label: String) -> Bool {
+        guard ProcessWatch.isAlive(pid) else { return false }
+        cancelTimers()
+        endDate = nil
+        watchedName = label
+        createAssertions()
+        scheduleWatch(pid: pid)
+        onStateChange?()
+        return true
+    }
+
+    /// Why a session ended — affects whether/how the user is notified.
+    /// `.expired` carries an optional label naming what finished (a watched
+    /// process); nil means a plain timer elapsed.
+    private enum StopReason {
+        case manual
+        case expired(finished: String?)
+    }
 
     /// Stop keeping awake and release all assertions (user-initiated).
     func stop() {
@@ -75,13 +105,14 @@ final class NoNapController {
     }
 
     private func stop(reason: StopReason) {
-        let wasTimed = endDate != nil
+        let wasAuto = endDate != nil || watchedName != nil
         cancelTimers()
         endDate = nil
+        watchedName = nil
         releaseAssertions()
         onStateChange?()
-        if reason == .expired && wasTimed {
-            onTimedExpiry?()
+        if case .expired(let finished) = reason, wasAuto {
+            onAutoStop?(finished)
         }
     }
 
@@ -128,10 +159,28 @@ final class NoNapController {
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now() + seconds)
         timer.setEventHandler { [weak self] in
-            self?.stop(reason: .expired)
+            self?.stop(reason: .expired(finished: nil))
         }
         timer.resume()
         stopTimer = timer
+    }
+
+    /// Poll the watched pid; when it's gone, auto-stop via the same `.expired`
+    /// path a timer uses (so the end-of-session notification fires).
+    /// Note: pids can be reused, so if the watched process dies and the OS
+    /// reassigns its number within the poll window we'd keep watching the new
+    /// occupant — an accepted limitation for a 5s poll on a tiny tool.
+    private func scheduleWatch(pid: pid_t) {
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + 5, repeating: 5)
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            if !ProcessWatch.isAlive(pid) {
+                self.stop(reason: .expired(finished: self.watchedName))
+            }
+        }
+        timer.resume()
+        watchTimer = timer
     }
 
     private func scheduleTick() {
@@ -149,5 +198,7 @@ final class NoNapController {
         stopTimer = nil
         tickTimer?.cancel()
         tickTimer = nil
+        watchTimer?.cancel()
+        watchTimer = nil
     }
 }

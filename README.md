@@ -6,7 +6,9 @@ A tiny macOS menu bar app that keeps your Mac awake while the long jobs run —
 **AI coding agents** (Claude Code, Cursor, Codex), local model inference, and
 overnight runs, plus the builds, backups, and SSH sessions you already trust it
 for. The GUI for `caffeinate`. Start a long agent run, walk away, and let it
-finish — without your Mac sleeping and killing the session.
+finish — without your Mac sleeping and killing the session. Or point NoNap at the
+run itself and let it stay awake **until the job is actually done**, then stop on
+its own.
 
 **[→ nonap website](https://barvhaim.github.io/nonap/)** · **[Download](https://github.com/barvhaim/nonap/releases)**
 
@@ -16,6 +18,7 @@ finish — without your Mac sleeping and killing the session.
 
 - ☕ Lives in the menu bar — green dot when awake, faint ring when off
 - ⏱ One click to keep awake, or a timed session — presets (15 m … 8 h) or a typed **custom** duration — with a live countdown
+- 🎯 Or keep awake **until your job finishes** — pick a running process (Claude Code, Cursor, Codex, `node`, `python`, `ollama`…) or a PID, and NoNap stops itself the moment it exits. No more guessing a timer
 - 🎛 Three modes: prevent **system** sleep (default), **display** sleep, or **both**
 - 🔔 Notifies you when a timer ends, and can **launch at login**
 - 🪶 Uses native IOKit power assertions — no daemons, no polling. Remembers your mode.

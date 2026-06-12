@@ -415,8 +415,9 @@
         You kick off a long agent run and walk away — then your Mac sleeps and
         the session dies with it. NoNap keeps the machine alive while the AI does
         the long work: <strong>Claude Code</strong>, <strong>Cursor</strong>,
-        <strong>Codex</strong>, local model inference, overnight jobs. (Still great
-        for the builds and backups you already use it for.)
+        <strong>Codex</strong>, local model inference, overnight jobs — and can
+        wait <em>until the job is done</em>, not just until a timer runs out.
+        (Still great for the builds and backups you already use it for.)
       </p>
       <div class="cta-row">
         <a class="btn btn-primary" href="https://github.com/barvhaim/nonap/releases">
@@ -439,6 +440,7 @@
           <li>Stop NoNap</li>
           <li class="sep"></li>
           <li>Start for <span class="arrow">›</span></li>
+          <li>Keep awake until <span class="arrow">›</span></li>
           <li class="sep"></li>
           <li>Mode <span class="arrow">›</span></li>
           <li><span class="check">✓</span> Prevent system sleep</li>
@@ -461,21 +463,26 @@
     <div class="features reveal">
       <div class="feat">
         <span class="ix">i.</span>
-        <h3>Outlast the run</h3>
-        <p>Set it for as long as the agent needs — a preset from 15 minutes to 8 hours, or a custom duration you type. A live countdown ticks down in the menu bar and shuts off on its own, with a notification when the run's window closes.</p>
+        <h3>Stop guessing the timer</h3>
+        <p>Point NoNap at the run itself — pick the process (Claude Code, Cursor, Codex, <code>node</code>, <code>python</code>, <code>ollama</code>…) or paste a PID, and it stays awake <em>until that job exits</em>, then stops on its own. A guessed timer ends too early and kills the session, or burns hours of battery after the work is already done.</p>
       </div>
       <div class="feat">
         <span class="ix">ii.</span>
+        <h3>Outlast the run</h3>
+        <p>Or just set a window — a preset from 15 minutes to 8 hours, or a custom duration you type. A live countdown ticks down in the menu bar and shuts off on its own, with a notification when it closes.</p>
+      </div>
+      <div class="feat">
+        <span class="ix">iii.</span>
         <h3>Walk away with confidence</h3>
         <p>Step out for coffee or leave it overnight. Keep the <em>system</em> running while the screen dims, keep the <em>display</em> lit to watch the logs, or hold <em>both</em> — your call. The session survives until you say stop.</p>
       </div>
       <div class="feat">
-        <span class="ix">iii.</span>
+        <span class="ix">iv.</span>
         <h3>Native to the core</h3>
-        <p>Just macOS <code>IOPMAssertion</code> power assertions — the same mechanism <code>caffeinate</code> uses. No background daemon, no polling, no drain. It releases the moment you stop.</p>
+        <p>Just macOS <code>IOPMAssertion</code> power assertions — the same mechanism <code>caffeinate</code> uses. No background daemon, no drain; a light <code>kill(pid,0)</code> probe is all the watch costs. It releases the moment the job ends or you stop.</p>
       </div>
       <div class="feat">
-        <span class="ix">iv.</span>
+        <span class="ix">v.</span>
         <h3>Nothing to learn</h3>
         <p>A coffee cup, green when it's working, a faint ring when it isn't. It remembers your last mode. No window, no settings, no dock icon — that's the entire app.</p>
       </div>
