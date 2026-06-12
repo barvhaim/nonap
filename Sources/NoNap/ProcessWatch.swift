@@ -12,13 +12,21 @@ enum ProcessWatch {
     /// A discovered process: its pid and short executable name.
     struct Candidate { let pid: pid_t; let name: String }
 
-    /// Executable-name substrings that look like long-running agent/dev jobs —
-    /// the kinds of process you'd want to outlast (AI coding agents, local
-    /// inference, builds, transfers).
-    private static let needles = [
-        "claude", "cursor", "codex", "node", "python", "ollama", "llama",
-        "ruby", "java", "cargo", "make", "ssh", "rsync", "docker",
+    /// AI coding agents and local-inference runtimes — the processes most
+    /// people open this menu to watch. Listed first, in this order.
+    private static let agentNeedles = [
+        "claude", "cursor", "codex", "ollama", "llama",
     ]
+
+    /// More generic long-running dev jobs (builds, transfers, runtimes). Listed
+    /// after the agents.
+    private static let toolNeedles = [
+        "node", "python", "ruby", "java", "cargo", "make", "ssh", "rsync", "docker",
+    ]
+
+    /// All executable-name substrings we treat as candidates. Agents first so a
+    /// match's position in this array doubles as its menu priority.
+    private static let needles = agentNeedles + toolNeedles
 
     /// Whether the process with `pid` is still alive. `kill(_, 0)` sends no
     /// signal; it returns 0 if the pid exists, or -1 with `ESRCH` if it's gone.
@@ -29,8 +37,9 @@ enum ProcessWatch {
     }
 
     /// Candidate processes whose command name matches one of `needles`, deduped
-    /// by name (lowest pid kept, so the menu shows one "node"/"python" row) and
-    /// sorted by name then pid.
+    /// by name (lowest pid kept, so the menu shows one "node"/"python" row).
+    /// Ordered with AI coding agents first (then generic dev tools), and
+    /// alphabetically by name within each group.
     static func candidates() -> [Candidate] {
         guard let out = run(["/bin/ps", "-axo", "pid=,comm="]) else { return [] }
 
@@ -48,15 +57,25 @@ enum ProcessWatch {
             all.append(Candidate(pid: pid, name: name))
         }
 
-        // Dedupe by name keeping the lowest pid, then sort name → pid.
+        // Dedupe by name keeping the lowest pid.
         var byName: [String: Candidate] = [:]
         for c in all {
             if let existing = byName[c.name], existing.pid <= c.pid { continue }
             byName[c.name] = c
         }
+        // Sort by needle rank (agents before tools), then name, then pid.
         return byName.values.sorted {
-            $0.name == $1.name ? $0.pid < $1.pid : $0.name < $1.name
+            let r0 = rank($0.name), r1 = rank($1.name)
+            if r0 != r1 { return r0 < r1 }
+            return $0.name == $1.name ? $0.pid < $1.pid : $0.name < $1.name
         }
+    }
+
+    /// The index of the first `needles` entry this name matches; lower sorts
+    /// first. Unmatched names (shouldn't occur post-filter) sort last.
+    private static func rank(_ name: String) -> Int {
+        let lower = name.lowercased()
+        return needles.firstIndex(where: lower.contains) ?? needles.count
     }
 
     /// Run a command and return its stdout, or nil if it couldn't launch.
