@@ -12,11 +12,24 @@ of the `caffeinate` command.
   <img src="docs/screenshot.png" alt="NoNap menu" width="225">
 </p>
 
+## Download
+
+Grab the latest `NoNap.zip` from the
+[**Releases**](https://github.com/barvhaim/nonap/releases) page, unzip it, and
+move `NoNap.app` to your Applications folder.
+
+On first launch, **right-click `NoNap.app` → Open → Open** (the build is
+ad-hoc signed, not notarized, so a plain double-click is blocked once). After
+that it launches normally. Requires Apple Silicon (arm64).
+
+Prefer to build it yourself? See [Build & run](#build--run).
+
 ## Menu
 
-```
-☕ NoNap: Active
+NoNap lives in the menu bar as a coffee-cup icon with a status dot — **green
+when keeping your Mac awake**, a faint ring when off. Click it for:
 
+```
 Start NoNap
 Stop NoNap
 Start for 30 minutes
@@ -100,7 +113,7 @@ attributed to NoNap. They disappear when you Stop or Quit.
 Issues and pull requests are welcome. To hack on NoNap:
 
 ```bash
-git clone <your-fork-url>
+git clone https://github.com/barvhaim/nonap.git
 cd nonap
 swift run          # runs the menu-bar app directly, no Dock icon
 ```
