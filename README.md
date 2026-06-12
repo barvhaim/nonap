@@ -13,7 +13,7 @@ its own.
 **[→ nonap website](https://barvhaim.github.io/nonap/)** · **[Download](https://github.com/barvhaim/nonap/releases)**
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="NoNap menu" width="210">
+  <img width="307" height="320" alt="NoNap menu" src="https://github.com/user-attachments/assets/abdfb427-ace8-41b3-b690-aaa3f3be7c3e" />
 </p>
 
 - ☕ Lives in the menu bar — green dot when awake, faint ring when off
