@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var startItem: NSMenuItem!
     private var stopItem: NSMenuItem!
     private var modeItems: [KeepAwakeMode: NSMenuItem] = [:]
+    private var loginItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -17,6 +18,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         controller.onStateChange = { [weak self] in
             self?.refreshUI()
+        }
+        controller.onTimedExpiry = {
+            Notifier.post(title: "NoNap stopped",
+                          body: "Your timer ended — your Mac can sleep now.")
         }
         refreshUI()
     }
@@ -42,15 +47,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        let thirtyMin = menu.addItem(withTitle: "Start for 30 minutes",
-                                     action: #selector(startTimed30), keyEquivalent: "")
-        thirtyMin.target = self
-        let oneHour = menu.addItem(withTitle: "Start for 1 hour",
-                                   action: #selector(startTimed60), keyEquivalent: "")
-        oneHour.target = self
-        let twoHours = menu.addItem(withTitle: "Start for 2 hours",
-                                    action: #selector(startTimed120), keyEquivalent: "")
-        twoHours.target = self
+        // "Start for ▸" submenu: presets plus a typed Custom… option.
+        let timedItem = menu.addItem(withTitle: "Start for", action: nil, keyEquivalent: "")
+        let timedMenu = NSMenu()
+        timedMenu.autoenablesItems = false
+        for preset in Self.timedPresets {
+            let item = timedMenu.addItem(withTitle: preset.label,
+                                         action: #selector(startTimedFromItem(_:)),
+                                         keyEquivalent: "")
+            item.target = self
+            item.representedObject = preset.seconds
+        }
+        timedMenu.addItem(.separator())
+        let customItem = timedMenu.addItem(withTitle: "Custom…",
+                                           action: #selector(startCustom),
+                                           keyEquivalent: "")
+        customItem.target = self
+        timedItem.submenu = timedMenu
 
         menu.addItem(.separator())
 
@@ -67,6 +80,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        loginItem = menu.addItem(withTitle: "Launch at login",
+                                 action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        loginItem.target = self
+
         let quitItem = menu.addItem(withTitle: "Quit",
                                     action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
@@ -74,13 +91,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return menu
     }
 
+    /// Timed-session presets shown in the "Start for ▸" submenu.
+    private static let timedPresets: [(label: String, seconds: TimeInterval)] = [
+        ("15 minutes", 15 * 60),
+        ("30 minutes", 30 * 60),
+        ("45 minutes", 45 * 60),
+        ("1 hour", 60 * 60),
+        ("2 hours", 120 * 60),
+        ("4 hours", 240 * 60),
+        ("8 hours", 480 * 60),
+    ]
+
     // MARK: - Actions
 
     @objc private func startNoNap() { controller.start() }
     @objc private func stopNoNap() { controller.stop() }
-    @objc private func startTimed30() { controller.startTimed(30 * 60) }
-    @objc private func startTimed60() { controller.startTimed(60 * 60) }
-    @objc private func startTimed120() { controller.startTimed(120 * 60) }
+
+    @objc private func startTimedFromItem(_ sender: NSMenuItem) {
+        guard let seconds = sender.representedObject as? TimeInterval else { return }
+        Notifier.requestAuthorizationIfNeeded()
+        controller.startTimed(seconds)
+    }
+
+    /// Prompt for a free-form duration (e.g. "90m", "2h30m") and start a timer.
+    @objc private func startCustom() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        let alert = NSAlert()
+        alert.messageText = "Keep awake for…"
+        alert.informativeText = "Enter a duration, e.g. 90m, 2h, or 1h30m."
+        alert.addButton(withTitle: "Start")
+        alert.addButton(withTitle: "Cancel")
+
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        field.placeholderString = "90m"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard let seconds = Self.parseDuration(field.stringValue), seconds > 0 else {
+            NSSound.beep()
+            return
+        }
+        Notifier.requestAuthorizationIfNeeded()
+        controller.startTimed(seconds)
+    }
 
     @objc private func setMode(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String,
@@ -88,7 +143,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.mode = mode
     }
 
+    @objc private func toggleLaunchAtLogin() {
+        try? LoginItem.set(!LoginItem.isEnabled)
+        refreshUI()
+    }
+
     @objc private func quit() { NSApp.terminate(nil) }
+
+    /// Parse durations like "90m", "2h", "2h30m", "1h 30m", or a bare number
+    /// (interpreted as minutes). Returns seconds, or nil if nothing parsed.
+    static func parseDuration(_ input: String) -> TimeInterval? {
+        let s = input.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty else { return nil }
+
+        // Bare number → minutes.
+        if let bare = Double(s) { return bare * 60 }
+
+        var total: TimeInterval = 0
+        var matched = false
+        var number = ""
+        for ch in s {
+            if ch.isNumber || ch == "." {
+                number.append(ch)
+            } else if ch == "h" || ch == "m" {
+                guard let value = Double(number) else { return nil }
+                total += value * (ch == "h" ? 3600 : 60)
+                number = ""
+                matched = true
+            } else if ch == " " {
+                continue
+            } else {
+                return nil   // unexpected character
+            }
+        }
+        // Trailing digits with no unit are invalid in unit mode.
+        if !number.isEmpty { return nil }
+        return matched ? total : nil
+    }
 
     // MARK: - UI refresh
 
@@ -111,6 +202,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         startItem.isEnabled = !controller.isActive
         stopItem.isEnabled = controller.isActive
+
+        loginItem.state = LoginItem.isEnabled ? .on : .off
+        loginItem.isEnabled = LoginItem.isSupported
     }
 
     /// A single composited icon: the coffee cup (tinted to the menu-bar text

@@ -11,6 +11,10 @@ final class NoNapController {
     /// so the UI can refresh in one place.
     var onStateChange: (() -> Void)?
 
+    /// Called only when a *timed* session ends on its own (not a manual Stop),
+    /// so the UI can notify the user.
+    var onTimedExpiry: (() -> Void)?
+
     private static let modeDefaultsKey = "keepAwakeMode"
 
     /// Currently-held assertion ids (one for `.system`/`.display`, two for `.both`).
@@ -62,12 +66,23 @@ final class NoNapController {
         onStateChange?()
     }
 
-    /// Stop keeping awake and release all assertions.
+    /// Why a session ended — affects whether the user is notified.
+    private enum StopReason { case manual, expired }
+
+    /// Stop keeping awake and release all assertions (user-initiated).
     func stop() {
+        stop(reason: .manual)
+    }
+
+    private func stop(reason: StopReason) {
+        let wasTimed = endDate != nil
         cancelTimers()
         endDate = nil
         releaseAssertions()
         onStateChange?()
+        if reason == .expired && wasTimed {
+            onTimedExpiry?()
+        }
     }
 
     /// Remaining time for a timed session, or nil if indefinite/inactive.
@@ -113,7 +128,7 @@ final class NoNapController {
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now() + seconds)
         timer.setEventHandler { [weak self] in
-            self?.stop()
+            self?.stop(reason: .expired)
         }
         timer.resume()
         stopTimer = timer

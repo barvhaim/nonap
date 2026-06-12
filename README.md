@@ -13,8 +13,9 @@ sessions, and local AI jobs.
 </p>
 
 - ☕ Lives in the menu bar — green dot when awake, faint ring when off
-- ⏱ One click to keep awake, or a timed session (30 min / 1 h / 2 h) with a live countdown
+- ⏱ One click to keep awake, or a timed session — presets (15 m … 8 h) or a typed **custom** duration — with a live countdown
 - 🎛 Three modes: prevent **system** sleep (default), **display** sleep, or **both**
+- 🔔 Notifies you when a timer ends, and can **launch at login**
 - 🪶 Uses native IOKit power assertions — no daemons, no polling. Remembers your mode.
 
 ## Install
