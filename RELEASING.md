@@ -1,8 +1,8 @@
 # Releasing NoNap
 
 NoNap uses git tags to cut releases. Pushing a tag like `v1.0.0` triggers the
-[release workflow](.github/workflows/release.yml), which builds `NoNap.zip` and
-publishes it as a GitHub Release with auto-generated notes.
+[release workflow](.github/workflows/release.yml), which builds `NoNap.dmg` and
+`NoNap.zip` and publishes them as a GitHub Release with auto-generated notes.
 
 ## Cut a release
 
@@ -27,6 +27,7 @@ publishes it as a GitHub Release with auto-generated notes.
 ## Build a release locally
 
 ```bash
+./Scripts/make_dmg.sh        # produces NoNap.dmg
 ./Scripts/package_zip.sh     # produces NoNap.zip
 ```
 

@@ -17,9 +17,10 @@ sessions, and local AI jobs.
 
 ## Install
 
-Download `NoNap.zip` from the
-[**Releases**](https://github.com/barvhaim/nonap/releases) page, unzip, and drag
-`NoNap.app` to Applications. Apple Silicon (arm64) only.
+Download `NoNap.dmg` from the
+[**Releases**](https://github.com/barvhaim/nonap/releases) page, open it, and drag
+**NoNap** into Applications. (A `NoNap.zip` is also attached if you prefer.)
+Apple Silicon (arm64) only.
 
 > First launch: **right-click `NoNap.app` → Open → Open**. The build is ad-hoc
 > signed (not notarized), so a plain double-click is blocked once — after that
@@ -43,6 +44,7 @@ cd nonap
 
 swift run                 # run directly (menu-bar accessory, no Dock icon)
 ./Scripts/make_app.sh     # build a NoNap.app bundle
+./Scripts/make_dmg.sh     # build a drag-to-install NoNap.dmg
 ./Scripts/package_zip.sh  # build + zip to NoNap.zip for sharing
 ```
 

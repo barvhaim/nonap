@@ -1,7 +1,7 @@
 name: Release
 
-# Builds NoNap and attaches NoNap.zip to a GitHub Release when you push a
-# version tag like v1.0.0.
+# Builds NoNap and attaches NoNap.dmg + NoNap.zip to a GitHub Release when you
+# push a version tag like v1.0.0.
 on:
   push:
     tags:
@@ -23,16 +23,25 @@ jobs:
         with:
           xcode-version: "16"
 
-      - name: Build & zip
+      - name: Build DMG installer
+        run: ./Scripts/make_dmg.sh
+
+      - name: Build zip
         run: ./Scripts/package_zip.sh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: NoNap.zip
+          files: |
+            NoNap.dmg
+            NoNap.zip
           generate_release_notes: true
           body: |
             ## NoNap ${{ github.ref_name }}
 
-            Download `NoNap.zip` below, unzip, and **right-click NoNap.app → Open**
-            the first time (the build is ad-hoc signed, not notarized).
+            **Recommended:** download `NoNap.dmg`, open it, and drag **NoNap** into
+            Applications. (`NoNap.zip` is also attached if you prefer.)
+
+            On first launch, **right-click NoNap.app → Open → Open** — the build is
+            ad-hoc signed (not notarized), so a plain double-click is blocked once.
+            Apple Silicon (arm64).
