@@ -74,11 +74,13 @@ enum ProcessWatch {
             all.append(Candidate(pid: pid, name: name))
         }
 
-        // Dedupe by name keeping the lowest pid.
+        // Dedupe case-insensitively (so `Codex` and `codex` collapse to one
+        // row) keeping the lowest pid.
         var byName: [String: Candidate] = [:]
         for c in all {
-            if let existing = byName[c.name], existing.pid <= c.pid { continue }
-            byName[c.name] = c
+            let key = c.name.lowercased()
+            if let existing = byName[key], existing.pid <= c.pid { continue }
+            byName[key] = c
         }
         // Sort by needle rank (agents before tools), then name, then pid.
         return byName.values.sorted {
