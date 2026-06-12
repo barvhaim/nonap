@@ -9,7 +9,7 @@ sessions, and local AI jobs.
 **[→ nonap website](https://barvhaim.github.io/nonap/)** · **[Download](https://github.com/barvhaim/nonap/releases)**
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="NoNap menu" width="225">
+  <img src="docs/screenshot.png" alt="NoNap menu" width="210">
 </p>
 
 - ☕ Lives in the menu bar — green dot when awake, faint ring when off
