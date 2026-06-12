@@ -15,7 +15,7 @@ enum ProcessWatch {
     /// AI coding agents and local-inference runtimes — the processes most
     /// people open this menu to watch. Listed first, in this order.
     private static let agentNeedles = [
-        "claude", "cursor", "codex", "ollama", "llama",
+        "claude", "cursor", "codex", "chatgpt", "ollama", "llama",
     ]
 
     /// More generic long-running dev jobs (builds, transfers, runtimes). Listed
@@ -53,7 +53,12 @@ enum ProcessWatch {
                 .trimmingCharacters(in: .whitespaces)
             let name = (comm as NSString).lastPathComponent
             let lower = name.lowercased()
-            guard pid != getpid(), needles.contains(where: lower.contains) else { continue }
+            // Skip the renderer/GPU "Helper" subprocesses GUI apps spawn (e.g.
+            // ChatGPTHelper, Cursor Helper) — watch the main app process, not
+            // its workers.
+            guard pid != getpid(),
+                  !lower.contains("helper"),
+                  needles.contains(where: lower.contains) else { continue }
             all.append(Candidate(pid: pid, name: name))
         }
 
