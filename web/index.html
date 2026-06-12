@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NoNap — Keep your Mac awake, only when you need it</title>
-<meta name="description" content="A tiny macOS menu bar app that keeps your Mac awake on demand. The GUI equivalent of caffeinate — for long builds, downloads, backups, and local AI jobs.">
+<title>NoNap — Keep your Mac awake while your AI agent runs</title>
+<meta name="description" content="A tiny macOS menu bar app that keeps your Mac awake while AI coding agents (Claude Code, Cursor, Codex) and local model inference do the long work — plus the builds and backups you already trust it for. The GUI for caffeinate.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -407,15 +407,16 @@
     <div>
       <span class="eyebrow">macOS menu bar · open source</span>
       <h1>
-        <span class="hero-line"><span>Your build finishes.</span></span>
+        <span class="hero-line"><span>Your agent runs<br>for hours.</span></span>
         <span class="hero-line"><span>Your Mac stays <em class="stay">awake</em>.</span></span>
-        <span class="hero-line"><span>Sleep happens on<br>your terms.</span></span>
+        <span class="hero-line"><span>Let the AI cook.</span></span>
       </h1>
       <p class="lede">
-        Nothing kills a long build, a backup, or an overnight download like a Mac
-        that dozes off mid-job. NoNap holds it open for exactly as long as you
-        need — then gets out of the way. The menu-bar answer to
-        <code>caffeinate</code>.
+        You kick off a long agent run and walk away — then your Mac sleeps and
+        the session dies with it. NoNap keeps the machine alive while the AI does
+        the long work: <strong>Claude Code</strong>, <strong>Cursor</strong>,
+        <strong>Codex</strong>, local model inference, overnight jobs. (Still great
+        for the builds and backups you already use it for.)
       </p>
       <div class="cta-row">
         <a class="btn btn-primary" href="https://github.com/barvhaim/nonap/releases">
@@ -437,15 +438,14 @@
           <li class="dim">Start NoNap</li>
           <li>Stop NoNap</li>
           <li class="sep"></li>
-          <li>Start for 30 minutes</li>
-          <li>Start for 1 hour</li>
-          <li>Start for 2 hours</li>
+          <li>Start for <span class="arrow">›</span></li>
           <li class="sep"></li>
-          <li class="dim">Mode <span class="arrow">›</span></li>
+          <li>Mode <span class="arrow">›</span></li>
           <li><span class="check">✓</span> Prevent system sleep</li>
           <li><span class="check"> </span> Prevent display sleep</li>
           <li><span class="check"> </span> Prevent both</li>
           <li class="sep"></li>
+          <li>Launch at login</li>
           <li>Quit <span class="kbd">⌘Q</span></li>
         </ul>
       </div>
@@ -455,19 +455,19 @@
   <!-- FEATURES -->
   <section>
     <div class="reveal">
-      <span class="sec-label">Why NoNap</span>
-      <h2>One job, done <em>properly</em>.</h2>
+      <span class="sec-label">Built for long runs</span>
+      <h2>While the agent works, <em>you don't worry</em>.</h2>
     </div>
     <div class="features reveal">
       <div class="feat">
         <span class="ix">i.</span>
-        <h3>Awake on your schedule</h3>
-        <p>Flip it on with a click, pick a preset from 15 minutes to 8 hours, or type your own — a live countdown ticks down in the menu bar and shuts off on its own, with a notification when it does.</p>
+        <h3>Outlast the run</h3>
+        <p>Set it for as long as the agent needs — a preset from 15 minutes to 8 hours, or a custom duration you type. A live countdown ticks down in the menu bar and shuts off on its own, with a notification when the run's window closes.</p>
       </div>
       <div class="feat">
         <span class="ix">ii.</span>
-        <h3>Exactly the right kind of awake</h3>
-        <p>Keep the <em>system</em> running, the <em>display</em> lit, or <em>both</em>. The default matches a plain <code>caffeinate</code> — system up, screen free to dim.</p>
+        <h3>Walk away with confidence</h3>
+        <p>Step out for coffee or leave it overnight. Keep the <em>system</em> running while the screen dims, keep the <em>display</em> lit to watch the logs, or hold <em>both</em> — your call. The session survives until you say stop.</p>
       </div>
       <div class="feat">
         <span class="ix">iii.</span>
@@ -494,12 +494,12 @@
       </div>
       <div class="mode-row">
         <div class="mode-name">Prevent system sleep <span class="tag">default</span></div>
-        <p>Work keeps running; the screen is free to dim. Best for builds, downloads, and SSH.</p>
+        <p>The agent keeps running while the screen is free to dim. Best for headless runs, builds, and SSH.</p>
         <div class="like">caffeinate</div>
       </div>
       <div class="mode-row">
         <div class="mode-name">Prevent display sleep</div>
-        <p>The screen stays lit too. For dashboards, presentations, and anything you watch.</p>
+        <p>The screen stays lit too — for watching the agent's output scroll by in real time.</p>
         <div class="like">caffeinate -d</div>
       </div>
       <div class="mode-row">
@@ -551,7 +551,7 @@
       <a href="https://github.com/barvhaim/nonap/releases">Releases</a>
       <a href="https://github.com/barvhaim/nonap/blob/main/LICENSE">MIT License</a>
     </div>
-    <span class="meta-note">Keep your Mac awake, only when you need it.</span>
+    <span class="meta-note">Keep your Mac awake while the AI does the work.</span>
   </footer>
 
 </div>

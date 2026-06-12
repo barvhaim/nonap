@@ -2,9 +2,11 @@
 
 [![Build](https://github.com/barvhaim/nonap/actions/workflows/build.yml/badge.svg)](https://github.com/barvhaim/nonap/actions/workflows/build.yml)
 
-A tiny macOS menu bar app that keeps your Mac awake — **only when you need it**.
-The GUI equivalent of `caffeinate`, for long builds, downloads, backups, SSH
-sessions, and local AI jobs.
+A tiny macOS menu bar app that keeps your Mac awake while the long jobs run —
+**AI coding agents** (Claude Code, Cursor, Codex), local model inference, and
+overnight runs, plus the builds, backups, and SSH sessions you already trust it
+for. The GUI for `caffeinate`. Start a long agent run, walk away, and let it
+finish — without your Mac sleeping and killing the session.
 
 **[→ nonap website](https://barvhaim.github.io/nonap/)** · **[Download](https://github.com/barvhaim/nonap/releases)**
 
