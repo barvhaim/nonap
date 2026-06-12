@@ -13,10 +13,15 @@ permissions:
 jobs:
   release:
     name: Build & publish release
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Select Xcode 16 (Swift 6)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16"
 
       - name: Build & zip
         run: ./Scripts/package_zip.sh
