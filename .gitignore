@@ -1,0 +1,20 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Build output / distributables
+NoNap.app/
+NoNap.zip
+*.dmg
+
+# macOS
+.DS_Store
+
+# Xcode (in case you open the package in Xcode)
+*.xcodeproj/xcuserdata/
+xcuserdata/
+DerivedData/
+
+# JetBrains IDEs
+.idea/
