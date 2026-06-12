@@ -42,6 +42,8 @@ jobs:
             **Recommended:** download `NoNap.dmg`, open it, and drag **NoNap** into
             Applications. (`NoNap.zip` is also attached if you prefer.)
 
-            On first launch, **right-click NoNap.app → Open → Open** — the build is
-            ad-hoc signed (not notarized), so a plain double-click is blocked once.
+            **First launch:** the build is ad-hoc signed (not notarized), so macOS
+            blocks it once. Open the app, then go to **System Settings → Privacy &
+            Security → Open Anyway**. Or run
+            `xattr -dr com.apple.quarantine /Applications/NoNap.app` in Terminal.
             Apple Silicon (arm64).
