@@ -6,6 +6,8 @@ A tiny macOS menu bar app that keeps your Mac awake — **only when you need it*
 The GUI equivalent of `caffeinate`, for long builds, downloads, backups, SSH
 sessions, and local AI jobs.
 
+**[→ nonap website](https://barvhaim.github.io/nonap/)** · **[Download](https://github.com/barvhaim/nonap/releases)**
+
 <p align="center">
   <img src="docs/screenshot.png" alt="NoNap menu" width="225">
 </p>
