@@ -18,6 +18,27 @@ enum ProcessWatch {
         "claude", "cursor", "codex", "chatgpt", "ollama", "llama",
     ]
 
+    /// IDE extension-host bundles: each entry maps a recognisable substring in
+    /// the full executable path to the friendly label used in the process menu.
+    /// These processes host coding-agent extensions (Claude Code, Copilot, etc.)
+    /// but have names with spaces and parens that defeat the needle matcher.
+    /// Insiders listed first so its path isn't swallowed by the shorter VS Code entry.
+    private static let extensionHosts: [(bundle: String, label: String)] = [
+        ("Visual Studio Code - Insiders.app", "VS Code Insiders"),
+        ("Visual Studio Code.app",            "VS Code"),
+        ("Cursor.app",                        "Cursor"),
+    ]
+
+    /// If `comm` (full executable path) and `name` (basename) identify an IDE
+    /// extension-host process — Electron's "Helper (Plugin)" variant launched
+    /// from a known IDE bundle — returns the friendly label (e.g. "VS Code").
+    /// Uses the full path to avoid false positives from unrelated apps whose
+    /// basename happens to end with "Helper (Plugin)".
+    private static func extensionHostLabel(comm: String, name: String) -> String? {
+        guard name.hasSuffix("Helper (Plugin)") else { return nil }
+        return extensionHosts.first { comm.contains($0.bundle) }?.label
+    }
+
     /// More generic long-running dev jobs (builds, transfers, runtimes). Listed
     /// after the agents.
     private static let toolNeedles = [
@@ -65,13 +86,20 @@ enum ProcessWatch {
         for line in out.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard let sp = trimmed.firstIndex(of: " "),
-                  let pid = pid_t(trimmed[..<sp]) else { continue }
+                  let pid = pid_t(trimmed[..<sp]),
+                  pid != getpid() else { continue }
             // `comm` is the full executable path; take the basename.
             let comm = String(trimmed[trimmed.index(after: sp)...])
                 .trimmingCharacters(in: .whitespaces)
             let name = (comm as NSString).lastPathComponent
-            guard pid != getpid(), matches(name) else { continue }
-            all.append(Candidate(pid: pid, name: name))
+            if let label = extensionHostLabel(comm: comm, name: name) {
+                // Extension hosts run agent workloads (Claude Code, Copilot, etc.)
+                // but can't be matched by basename alone — use a friendly label.
+                all.append(Candidate(pid: pid, name: "\(label) Extension Host"))
+            } else {
+                guard matches(name) else { continue }
+                all.append(Candidate(pid: pid, name: name))
+            }
         }
 
         // Dedupe case-insensitively (so `Codex` and `codex` collapse to one
@@ -91,9 +119,11 @@ enum ProcessWatch {
     }
 
     /// The index of the first `needles` entry this name matches; lower sorts
-    /// first. Unmatched names (shouldn't occur post-filter) sort last.
+    /// first. Extension-host display names (e.g. "VS Code Extension Host") sort
+    /// in the agent tier, right after "claude". Unmatched names sort last.
     private static func rank(_ name: String) -> Int {
-        needles.firstIndex { isTool(name, $0) } ?? needles.count
+        if name.hasSuffix("Extension Host") { return 1 }
+        return needles.firstIndex { isTool(name, $0) } ?? needles.count
     }
 
     /// Run a command and return its stdout, or nil if it couldn't launch.
