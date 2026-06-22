@@ -20,6 +20,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private struct WatchTarget { let pid: pid_t; let name: String }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Single-instance guard. macOS only blocks a second launch of the *same*
+        // bundle on disk; multiple copies (a mounted DMG, a stray build, a Trash
+        // copy) share our bundle id and would each spawn their own menu-bar icon.
+        // If another NoNap is already running, bow out so the user sees one icon.
+        if hasOtherRunningInstance() {
+            NSApp.terminate(nil)
+            return
+        }
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.menu = buildMenu()
 
@@ -36,6 +45,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         controller.stop()
+    }
+
+    /// True if another process with our bundle identifier is already running.
+    /// Compares against `NSRunningApplication` rather than the on-disk path, so
+    /// duplicate copies of NoNap.app (DMG, stray build, Trash) all count as the
+    /// same app and only the first to launch survives.
+    private func hasOtherRunningInstance() -> Bool {
+        guard let bundleID = Bundle.main.bundleIdentifier else { return false }
+        let me = NSRunningApplication.current
+        return NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+            .contains { $0.processIdentifier != me.processIdentifier }
     }
 
     // MARK: - Menu construction
