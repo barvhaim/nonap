@@ -32,6 +32,14 @@ mkdir -p "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/NoNap"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 
+# App icon. Build it on demand if the compiled .icns is missing.
+ICNS="$ROOT/Resources/NoNap.icns"
+if [[ ! -f "$ICNS" ]]; then
+    echo "==> NoNap.icns missing; building it..."
+    "$SCRIPT_DIR/make_iconset.sh"
+fi
+cp "$ICNS" "$APP/Contents/Resources/NoNap.icns"
+
 echo "==> Ad-hoc codesigning ..."
 codesign --force --deep --sign - "$APP"
 

@@ -4,6 +4,10 @@
 <dict>
     <key>CFBundleExecutable</key>
     <string>NoNap</string>
+    <key>CFBundleIconFile</key>
+    <string>NoNap</string>
+    <key>CFBundleIconName</key>
+    <string>NoNap</string>
     <key>CFBundleIdentifier</key>
     <string>com.barvhaim.NoNap</string>
     <key>CFBundleName</key>
