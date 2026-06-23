@@ -2,6 +2,8 @@
 
 [![Build](https://github.com/barvhaim/nonap/actions/workflows/build.yml/badge.svg)](https://github.com/barvhaim/nonap/actions/workflows/build.yml)
 
+[中文说明](README-cn.md)
+
 A tiny macOS menu bar app that keeps your Mac awake while the long jobs run —
 **AI coding agents** (Claude Code, Cursor, Codex), local model inference, and
 overnight runs, plus the builds, backups, and SSH sessions you already trust it
