@@ -18,6 +18,7 @@
 - ⏱ 一键保持唤醒，或启动定时会话：可选预设时长（15 分钟到 8 小时），也可输入**自定义**时长，并显示实时倒计时
 - 🎯 也可以保持唤醒，**直到你的任务结束**：选择一个正在运行的进程（Claude Code、Cursor、Codex、`node`、`python`、`ollama` 等）或 PID，NoNap 会在它退出时立即自动停止。无需再猜定时器要设多久
 - 🎛 三种模式：阻止**系统**睡眠（默认）、阻止**显示器**睡眠，或**两者都阻止**
+- 💻 可选的**合盖时保持唤醒**：合上盖子也不中断（VPN/SSH 保持连接），电池或电源供电均可
 - 🔔 定时器结束时通知你，并支持**登录时启动**
 - 🪶 使用原生 IOKit 电源断言：无守护进程、无轮询。会记住你的模式设置
 
@@ -45,6 +46,35 @@ xattr -dr com.apple.quarantine /Applications/NoNap.app
 | **阻止显示器睡眠** | 系统**和**屏幕 | `caffeinate -d` |
 | **两者都阻止** | 系统**和**屏幕 | — |
 
+## 合盖时保持唤醒
+
+上面三种模式使用 IOKit 电源断言（与 `caffeinate` 相同），只能阻止*空闲*睡眠。
+合上盖子会强制触发**合盖睡眠**，无论断言如何——Mac 会睡眠，VPN/SSH 会话随之中断。
+唯一能阻止它的办法是 `pmset disablesleep`，而这需要 root 权限。
+
+**合盖时保持唤醒**是一个可选设置，它会在 **NoNap 开启期间**生效。它运行
+`pmset -a disablesleep`，因此在**电池和电源**供电下都有效（电池电量低于 20% 时
+会跳过，以免合盖的 MacBook 过热）。会话启动时 NoNap 应用它，并在你 Stop、定时器
+结束、被监视的进程退出或退出应用时释放它。
+
+由于 `pmset` 需要 root 权限，首次启用时 NoNap 会执行一次**一次性设置**（输入一次
+密码），添加一条 `sudoers` 条目，仅授权这两条 `pmset disablesleep` 命令：
+
+```
+你的用户名 ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset -a disablesleep 0
+```
+
+此后即为**静默运行**——不再需要密码，也不会阻塞无人值守的自动停止。若日后要移除该
+授权，删除该文件即可：
+
+```bash
+sudo rm /etc/sudoers.d/nonap
+```
+
+> **注意。** `disablesleep` 是系统级且具有粘性的。如果 NoNap 在会话进行且此项开启
+> 时被*强制退出*，你的 Mac 将不会睡眠，直到清除该设置——重新启动 NoNap 并 Stop，
+> 或运行 `sudo pmset -a disablesleep 0`。
+
 ## 从源码构建
 
 需要 Xcode 16+ / Swift 6。
@@ -67,7 +97,7 @@ pmset -g assertions | grep NoNap
 
 ## 贡献
 
-欢迎提交 Issues 和 PR：整个应用只有四个小型 Swift 文件，位于 `Sources/NoNap/`。
+欢迎提交 Issues 和 PR：整个应用只有几个小型 Swift 文件，位于 `Sources/NoNap/`。
 发布流程见 [RELEASING.md](RELEASING.md)。
 
 ## 许可证

@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var startItem: NSMenuItem!
     private var stopItem: NSMenuItem!
     private var modeItems: [KeepAwakeMode: NSMenuItem] = [:]
+    private var lidClosedItem: NSMenuItem!
     private var loginItem: NSMenuItem!
 
     /// The "Keep awake until ▸" submenu, repopulated on open with the current
@@ -45,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         controller.stop()
+        controller.shutdownCleanup()
     }
 
     /// True if another process with our bundle identifier is already running.
@@ -114,6 +116,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             modeItems[mode] = item
         }
         modeItem.submenu = modeMenu
+
+        menu.addItem(.separator())
+
+        // A sleep-behavior toggle like Mode, but its own band: separated from the
+        // Mode radio group above and the app prefs below, so it's mistaken for
+        // neither.
+        lidClosedItem = menu.addItem(withTitle: "Prevent sleep on lid close",
+                                     action: #selector(toggleLidClosed), keyEquivalent: "")
+        lidClosedItem.target = self
+        lidClosedItem.toolTip = "While NoNap is on, also stay awake when you close "
+            + "the lid. One-time setup (asks for your password once); silent after. "
+            + "Skipped below 20% on battery."
 
         menu.addItem(.separator())
 
@@ -242,6 +256,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.mode = mode
     }
 
+    @objc private func toggleLidClosed() {
+        NSApp.activate(ignoringOtherApps: true)
+        let turningOn = !controller.lidClosedPreference
+        switch controller.setLidClosedPreference(turningOn) {
+        case .ok:
+            refreshUI()
+        case .notSetUp:
+            offerLidClosedSetup()
+        case .batteryTooLow:
+            NSSound.beep()
+            let alert = NSAlert()
+            alert.messageText = "Battery too low"
+            alert.informativeText = "Plug in to keep awake with the lid closed. "
+                + "Below 20% on battery this is skipped to avoid overheating."
+            alert.runModal()
+        case .failed(let message):
+            NSSound.beep()
+            let alert = NSAlert()
+            alert.messageText = "Couldn’t change the setting"
+            alert.informativeText = message
+            alert.runModal()
+        }
+    }
+
+    /// First-time enable: explain and run the one-time sudoers setup, then retry.
+    private func offerLidClosedSetup() {
+        let alert = NSAlert()
+        alert.messageText = "Set up “Prevent sleep on lid close”?"
+        alert.informativeText = "NoNap will add a one-time permission (a sudoers "
+            + "entry) so it can keep your Mac awake with the lid closed without "
+            + "asking for your password each time. It only affects the two "
+            + "`pmset disablesleep` commands. You’ll be asked for your password once."
+        alert.addButton(withTitle: "Set Up")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        switch Clamshell.installSudoers() {
+        case .ok:
+            _ = controller.setLidClosedPreference(true)
+            refreshUI()
+        case .cancelled:
+            break
+        case .failed(let message):
+            NSSound.beep()
+            let a = NSAlert()
+            a.messageText = "Setup failed"
+            a.informativeText = message
+            a.runModal()
+        case .notSetUp:
+            break   // not returned by installSudoers
+        }
+    }
+
     @objc private func toggleLaunchAtLogin() {
         try? LoginItem.set(!LoginItem.isEnabled)
         refreshUI()
@@ -304,6 +371,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         startItem.isEnabled = !controller.isActive
         stopItem.isEnabled = controller.isActive
+
+        lidClosedItem.state = controller.lidClosedPreference ? .on : .off
 
         loginItem.state = LoginItem.isEnabled ? .on : .off
         loginItem.isEnabled = LoginItem.isSupported

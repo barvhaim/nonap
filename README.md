@@ -22,6 +22,7 @@ its own.
 - ⏱ One click to keep awake, or a timed session — presets (15 m … 8 h) or a typed **custom** duration — with a live countdown
 - 🎯 Or keep awake **until your job finishes** — pick a running process (Claude Code, Cursor, Codex, `node`, `python`, `ollama`…) or a PID, and NoNap stops itself the moment it exits. No more guessing a timer
 - 🎛 Three modes: prevent **system** sleep (default), **display** sleep, or **both**
+- 💻 Optional **Prevent sleep on lid close** — survive closing the lid (VPN/SSH stay up), on battery or AC
 - 🔔 Notifies you when a timer ends, and can **launch at login**
 - 🪶 Uses native IOKit power assertions — no daemons, no polling. Remembers your mode.
 
@@ -51,6 +52,38 @@ xattr -dr com.apple.quarantine /Applications/NoNap.app
 | **Prevent display sleep** | System **and** screen | `caffeinate -d` |
 | **Prevent both** | System **and** screen | — |
 
+## Prevent sleep on lid close
+
+The three modes above use IOKit power assertions (like `caffeinate`), which only
+stop *idle* sleep. Closing the lid forces **clamshell sleep** regardless — your
+Mac sleeps and any VPN/SSH session drops. The only way to prevent that is
+`pmset disablesleep`, which needs root.
+
+**Prevent sleep on lid close** is an opt-in setting that does this **while NoNap
+is on**. It runs `pmset -a disablesleep`, so it works on **battery and AC** (below
+20% on battery it's skipped, to avoid overheating a closed MacBook). NoNap applies
+it when a session starts and releases it when you Stop, a timer ends, a watched
+process exits, or you Quit.
+
+Because `pmset` needs root, the first time you enable it NoNap runs a **one-time
+setup** (one password prompt) that adds a `sudoers` entry whitelisting only the
+two `pmset disablesleep` commands:
+
+```
+you ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset -a disablesleep 0
+```
+
+After that it's **silent** — no password, and nothing can block an unattended
+auto-stop. To remove the permission later, delete the file:
+
+```bash
+sudo rm /etc/sudoers.d/nonap
+```
+
+> **Caveat.** `disablesleep` is system-wide and sticky. If NoNap is *force-quit*
+> while a session is active with this on, your Mac won't sleep until it's cleared —
+> relaunch NoNap and Stop, or run `sudo pmset -a disablesleep 0`.
+
 ## Build from source
 
 Requires Xcode 16+ / Swift 6.
@@ -73,7 +106,7 @@ pmset -g assertions | grep NoNap
 
 ## Contributing
 
-Issues and PRs welcome — the whole app is four small Swift files under
+Issues and PRs welcome — the whole app is a handful of small Swift files under
 `Sources/NoNap/`. See [RELEASING.md](RELEASING.md) for how releases are cut.
 
 ## License

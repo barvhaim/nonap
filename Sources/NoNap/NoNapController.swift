@@ -18,6 +18,7 @@ final class NoNapController {
     var onAutoStop: ((_ finished: String?) -> Void)?
 
     private static let modeDefaultsKey = "keepAwakeMode"
+    private static let lidClosedDefaultsKey = "keepAwakeLidClosed"
 
     /// Currently-held assertion ids (one for `.system`/`.display`, two for `.both`).
     private var assertionIDs: [IOPMAssertionID] = []
@@ -37,6 +38,19 @@ final class NoNapController {
     /// nil unless a process-watch session is active.
     private(set) var watchedName: String?
 
+    /// User preference: also prevent lid-close (clamshell) sleep while a session
+    /// is active. Persisted, like `mode`. Applying it runs `pmset disablesleep`
+    /// (see `Clamshell`); that only happens while `isActive`, never on its own.
+    private(set) var lidClosedPreference = false
+
+    /// Whether we currently hold `pmset disablesleep 1`. Tracks the applied
+    /// state so we release exactly what we set.
+    private var lidClosedApplied = false
+
+    /// On battery, refuse to keep awake with the lid closed below this fraction,
+    /// to avoid overheating a closed MacBook.
+    static let lowBatteryThreshold = 0.20
+
     var isActive: Bool { !assertionIDs.isEmpty }
 
     /// The selected mode, persisted to `UserDefaults`. Changing it while active
@@ -53,6 +67,7 @@ final class NoNapController {
     init() {
         let raw = UserDefaults.standard.string(forKey: Self.modeDefaultsKey)
         self.mode = raw.flatMap(KeepAwakeMode.init(rawValue:)) ?? .system
+        self.lidClosedPreference = UserDefaults.standard.bool(forKey: Self.lidClosedDefaultsKey)
     }
 
     // MARK: - Public actions
@@ -109,7 +124,7 @@ final class NoNapController {
         cancelTimers()
         endDate = nil
         watchedName = nil
-        releaseAssertions()
+        releaseAssertions()   // also clears disablesleep if we set it
         onStateChange?()
         if case .expired(let finished) = reason, wasAuto {
             onAutoStop?(finished)
@@ -120,6 +135,74 @@ final class NoNapController {
     func remainingTime() -> TimeInterval? {
         guard let endDate else { return nil }
         return max(0, endDate.timeIntervalSinceNow)
+    }
+
+    // MARK: - Keep awake with the lid closed (pmset disablesleep)
+
+    enum LidResult {
+        case ok
+        /// Enabling needs the one-time sudoers setup first.
+        case notSetUp
+        /// Refused: on battery below `lowBatteryThreshold`.
+        case batteryTooLow
+        case failed(String)
+    }
+
+    /// Set the lid-closed preference. Enabling requires the one-time setup
+    /// (`Clamshell.isSetUp()`); without it, returns `.notSetUp` and changes
+    /// nothing so the caller can offer setup. If a session is active, the pmset
+    /// change is applied immediately — silently, since setup grants passwordless
+    /// sudo. While inactive it's just remembered for the next session.
+    @discardableResult
+    func setLidClosedPreference(_ on: Bool) -> LidResult {
+        guard on != lidClosedPreference else { return .ok }
+
+        if on {
+            guard Clamshell.isSetUp() else { return .notSetUp }
+            if isActive, isBatteryTooLow() { return .batteryTooLow }
+            if isActive {
+                switch Clamshell.setDisableSleep(true) {
+                case .ok:            lidClosedApplied = true
+                case .notSetUp:      return .notSetUp
+                case .cancelled:     return .ok   // shouldn't occur silently
+                case .failed(let m): return .failed(m)
+                }
+            }
+        } else {
+            clearLidClosed()
+        }
+
+        lidClosedPreference = on
+        UserDefaults.standard.set(on, forKey: Self.lidClosedDefaultsKey)
+        onStateChange?()
+        return .ok
+    }
+
+    /// Best-effort restore of `disablesleep 0` on termination. Not guaranteed on
+    /// crash/force-quit — the documented limitation.
+    func shutdownCleanup() {
+        clearLidClosed()
+    }
+
+    private func isBatteryTooLow() -> Bool {
+        !Clamshell.isOnAC()
+            && (Clamshell.batteryFraction() ?? 1) < Self.lowBatteryThreshold
+    }
+
+    /// Apply `disablesleep 1` when starting a session, if the preference is on
+    /// and battery allows. Silent (passwordless sudo); failure leaves it unapplied.
+    private func applyLidClosed() {
+        guard lidClosedPreference, !lidClosedApplied, !isBatteryTooLow() else { return }
+        if case .ok = Clamshell.setDisableSleep(true) {
+            lidClosedApplied = true
+        }
+    }
+
+    /// Release `disablesleep` if we're holding it. Idempotent.
+    private func clearLidClosed() {
+        guard lidClosedApplied else { return }
+        _ = Clamshell.setDisableSleep(false)
+        lidClosedApplied = false
     }
 
     // MARK: - Assertions
@@ -138,6 +221,7 @@ final class NoNapController {
                 assertionIDs.append(id)
             }
         }
+        applyLidClosed()
     }
 
     private func releaseAssertions() {
@@ -145,6 +229,7 @@ final class NoNapController {
             IOPMAssertionRelease(id)
         }
         assertionIDs.removeAll()
+        clearLidClosed()
     }
 
     /// Re-apply assertions for the current mode if a session is active.
